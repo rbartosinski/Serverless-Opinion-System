@@ -59,7 +59,7 @@ def sendMailToUser(data, content):
         Source=sender,
         Destination={
             'ToAddresses': [
-                'r.bartosinski@wp.pl',
+                '<<put.your.email.here.before.deploy>>',
             ],
         },
         Message={
