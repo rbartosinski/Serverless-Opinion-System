@@ -1,0 +1,74 @@
+service: python-opinion-sys
+
+custom:
+  secrets: ${file(secrets.json)}
+
+provider:
+  name: aws
+  runtime: python2.7
+  region: <put.aws.region.codename.here>
+  profile: <put.aws.account.name.here>
+  stage: prod
+  memory: 128
+  timeout: 10
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+    SENDER_EMAIL: <put.sender.email.here>
+    EMAIL_SUBJECT: New Opinion
+    CONFIG_SET: ConfigSet
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - ses:SendEmail
+        - ses:SendRawEmail
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - dynamodb:Scan
+        - dynamodb:PutItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  sendMail:
+    handler: handler.sendMail
+    description: Emails by SES
+    events:
+      - http:
+          path: sendMail
+          method: post
+          integration: lambda
+          cors: true
+          response:
+            headers:
+              "Access-Control-Allow_Origin": "'*'"
+  list:
+    handler: handler.list
+    description: All opinion
+    events:
+      - http:
+          path: list
+          method: get
+          integration: lambda
+          cors: true
+          response:
+            headers:
+              "Access-Control-Allow_Origin": "'*'"
+
+resources:
+  Resources:
+    ContactFormDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
